@@ -114,11 +114,21 @@ public class SafeDictionaryJson(SafeDictionaryJson.Options options)
         
         try
         {
-            json = JsonSerializer.Serialize(item.Value, new JsonSerializerOptions()
+           var serializerOptions = new JsonSerializerOptions
             {
                 PropertyNamingPolicy = options.NamingPolicy,
-                DictionaryKeyPolicy = options.NamingPolicy
-            });
+                DictionaryKeyPolicy = options.NamingPolicy,
+                Converters = { new ExceptionConverter() },
+
+            };
+            if (item.Value is Exception)
+            {
+                json = JsonSerializer.Serialize<Exception>(item.Value as Exception, serializerOptions);
+            }
+            else
+            {
+                json = JsonSerializer.Serialize(item.Value,serializerOptions);
+            }      
         }
         catch
         {
@@ -132,4 +142,23 @@ public class SafeDictionaryJson(SafeDictionaryJson.Options options)
     
     
     static string? ToInvariantString(object? obj) => Convert.ToString(obj, CultureInfo.InvariantCulture);
+
+
+    internal class ExceptionConverter : JsonConverter<Exception>
+    {
+       public override Exception Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+       {
+           throw new NotImplementedException("Not implemented for reading");
+       }  
+
+       public override void Write(Utf8JsonWriter writer, Exception value, JsonSerializerOptions options)
+       {
+           writer.WriteStartObject();
+           writer.WriteString("Message", value.Message);
+           writer.WriteString("StackTrace", value.StackTrace);
+           writer.WriteString("Source", value.Source);
+           writer.WriteEndObject();
+       }
+   }
+    
 }
